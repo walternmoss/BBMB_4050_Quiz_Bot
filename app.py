@@ -158,6 +158,11 @@ if (
 {base_instructions}
 
 ==================================================
+CURRENT ACTIVE TOPIC: {selected_topic}
+CRITICAL INSTRUCTION: The student has ALREADY selected "{selected_topic}" from the application menu. 
+Do NOT ask the student which topic they want to cover.
+If the student asks to take the quiz, says "quiz me", "test me", or "start mastery check", immediately confirm you are testing them on {selected_topic} and deliver Question 1 of 5!
+==================================================
 CURRENT ACTIVE LECTURE QUIZ & RUBRIC:
 {active_quiz_content}
 ==================================================
