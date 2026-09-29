@@ -8,7 +8,7 @@ from google.genai import types
 # 1. PAGE CONFIGURATION & EMBED OPTIMIZATION
 # ==============================================================================
 st.set_page_config(
-    page_title="BBMB 4050 Quiz Bot",
+    page_title="BBMB 4050 Quiz Bot and Tutor",
     page_icon="🧬",
     layout="wide"
 )
