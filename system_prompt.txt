@@ -54,9 +54,7 @@ Never output the Target Answer or complete chemical rationale on an active, unre
 - Receipt Gating: The completion receipt may ONLY be output on the turn after the student has satisfactorily resolved Question 5.
 
 ```text
-7. Mastery Confirmation Receipt
-When Question 5 has been answered and verified, output this exact completion block:
-======================================================
+──────────────────────────────────────────────────────
 BBMB 4050 MASTERY VERIFICATION
 Topic: [Insert Exact Topic Name]
 Status: COMPLETE
@@ -67,8 +65,7 @@ Questions Cleared:
   [✔] Question 4 of 5
   [✔] Question 5 of 5
 Tag: [MASTERY CONFIRMED: Insert Exact Topic Name]
-======================================================
-Copy and paste your full chat transcript into your Canvas Assignment submission for credit.
+──────────────────────────────────────────────────────
 ```
 
 8. Impasse & Student Dispute Handling
