@@ -8,27 +8,31 @@ from google.genai import types
 # 1. PAGE CONFIGURATION & EMBED OPTIMIZATION
 # ==============================================================================
 st.set_page_config(
-    page_title="BBMB 4050 Quiz Bot and Tutor",
+    page_title="BBMB 4050 Socratic Study Coach",
     page_icon="🧬",
     layout="wide"
 )
 
-# Hide Streamlit UI elements (header, footer, menu) for seamless Canvas iframe embedding
+# Hide Streamlit UI elements for clean Canvas iframe embedding
 st.markdown("""
     
 """, unsafe_allow_html=True)
 
 # ==============================================================================
-# 2. GEMINI CLIENT INITIALIZATION
+# 2. GEMINI CLIENT INITIALIZATION (PERSISTENT RESOURCE CACHE)
 # ==============================================================================
-# Retrieves key from Streamlit Secrets (Cloud) or local environment variable
 api_key = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY"))
 
 if not api_key:
     st.error("Missing Gemini API Key. Please configure GEMINI_API_KEY in your Streamlit Secrets.")
     st.stop()
 
-client = genai.Client(api_key=api_key)
+# Cache the client so its HTTP transport connection stays open across user reruns
+@st.cache_resource
+def get_gemini_client(key: str):
+    return genai.Client(api_key=key)
+
+client = get_gemini_client(api_key)
 
 # ==============================================================================
 # 3. SYLLABUS ORDER & FILE DISCOVERY (NO LECTURE NUMBERS)
@@ -87,14 +91,14 @@ if not SYSTEM_PROMPT_PATH.exists():
     st.error("Missing 'system_prompt.txt'. Please ensure it is present in the repository root.")
     st.stop()
 
-# Build mapping: "Topic Name" -> Path("quizzes/Quiz - Topic Name.md")
+# Map available files matching the syllabus order
 topic_options = {}
 for topic in SYLLABUS_ORDER:
     target_file = QUIZ_DIR / f"Quiz - {topic}.md"
     if target_file.exists():
         topic_options[topic] = target_file
 
-# Fallback: if files exist in /quizzes that aren't explicitly listed above, append them
+# Fallback: dynamically load any additional Quiz - *.md files not in the static list
 for extra_file in sorted(QUIZ_DIR.glob("Quiz - *.md")):
     clean_title = extra_file.stem.replace("Quiz - ", "").strip()
     if clean_title not in topic_options:
@@ -108,7 +112,7 @@ if not topic_options:
 # 4. SIDEBAR NAVIGATION & SESSION CONTROLS
 # ==============================================================================
 st.sidebar.title("🧬 BBMB 4050")
-st.sidebar.markdown("**Quiz Bot**")
+st.sidebar.markdown("**Socratic Study Coach**")
 
 selected_topic = st.sidebar.selectbox(
     "Choose Course Topic:",
@@ -117,10 +121,11 @@ selected_topic = st.sidebar.selectbox(
 
 selected_file_path = topic_options[selected_topic]
 
-# Reset button for students who want to restart the oral check from scratch
 if st.sidebar.button("🔄 Restart Active Topic"):
     st.session_state.current_topic = None
     st.session_state.messages = []
+    if "chat" in st.session_state:
+        del st.session_state["chat"]
     st.rerun()
 
 st.sidebar.markdown("---")
@@ -134,8 +139,11 @@ st.sidebar.caption(
 # ==============================================================================
 # 5. STATE MANAGEMENT & GEMINI CHAT INITIALIZATION
 # ==============================================================================
-# Reinitialize chat whenever a new topic is chosen or session is reset
-if "current_topic" not in st.session_state or st.session_state.current_topic != selected_topic:
+if (
+    "chat" not in st.session_state
+    or "current_topic" not in st.session_state
+    or st.session_state.current_topic != selected_topic
+):
     st.session_state.current_topic = selected_topic
     st.session_state.messages = []
 
@@ -155,12 +163,12 @@ CURRENT ACTIVE LECTURE QUIZ & RUBRIC:
 ==================================================
 """
 
-    # Create fresh chat instance using Gemini 2.5 Flash
+    # Create fresh persistent chat instance using Gemini 2.5 Flash
     st.session_state.chat = client.chats.create(
         model="gemini-2.5-flash",
         config=types.GenerateContentConfig(
             system_instruction=full_system_instruction,
-            temperature=0.2,  # Low temperature ensures adherence to the rubric
+            temperature=0.2,
         )
     )
 
@@ -169,19 +177,17 @@ CURRENT ACTIVE LECTURE QUIZ & RUBRIC:
 # ==============================================================================
 st.subheader(f"{selected_topic}")
 
-# Render chat history for current topic
+# Render chat history
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
 # Capture student input
 if user_input := st.chat_input("Enter your response or say 'Start Mastery Check'..."):
-    # Append & render user message
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    # Stream model response
     with st.chat_message("assistant"):
         response_box = st.empty()
         accumulated_text = ""
