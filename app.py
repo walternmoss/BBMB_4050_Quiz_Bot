@@ -21,10 +21,19 @@ st.markdown("""
 # ==============================================================================
 # 2. GEMINI CLIENT INITIALIZATION (PERSISTENT RESOURCE CACHE)
 # ==============================================================================
-api_key = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY"))
+# 1. Check environment variables first (Railway, Docker, local .env)
+api_key = os.environ.get("GEMINI_API_KEY")
+
+# 2. Fall back to Streamlit secrets safely without throwing FileNotFoundError (Streamlit Cloud)
+if not api_key:
+    try:
+        if "GEMINI_API_KEY" in st.secrets:
+            api_key = st.secrets["GEMINI_API_KEY"]
+    except Exception:
+        pass
 
 if not api_key:
-    st.error("Missing Gemini API Key. Please configure GEMINI_API_KEY in your Streamlit Secrets.")
+    st.error("Missing Gemini API Key. Please configure GEMINI_API_KEY in Railway Variables or Streamlit Secrets.")
     st.stop()
 
 # Cache the client so its HTTP transport connection stays open across user reruns
